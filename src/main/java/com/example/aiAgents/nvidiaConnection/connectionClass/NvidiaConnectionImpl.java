@@ -11,7 +11,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Service
 public class NvidiaConnectionImpl implements nvidiaConnection {
 
-    String NVIDIA_KEY = "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";
+    String NVIDIA_KEY = "nv";
 
     public WebClient webClient;
 
