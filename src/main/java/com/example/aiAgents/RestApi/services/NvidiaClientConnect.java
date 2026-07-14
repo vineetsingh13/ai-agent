@@ -1,5 +1,7 @@
 package com.example.aiAgents.RestApi.services;
 
+import com.example.aiAgents.RestApi.DTO.ChatRequest;
+import com.example.aiAgents.memoryPackage.LLMcontext;
 import com.example.aiAgents.nvidiaConnection.DTO.ChoicesMessage;
 import com.example.aiAgents.nvidiaConnection.DTO.NvidiaRequest;
 import com.example.aiAgents.nvidiaConnection.DTO.NvidiaResponse;
@@ -17,7 +19,12 @@ public class NvidiaClientConnect {
     @Autowired
     public NvidiaConnectionImpl nvidiaConnectionImpl;
 
-    public String getAiResponse(String clientMessage) {
+    @Autowired
+    LLMcontext  llmContext;
+
+    public String getAiResponse(ChatRequest request) {
+        llmContext.addUserMessage(request.conversationId(), request.query());
+
         NvidiaRequest nvidiaRequest = new NvidiaRequest();
         nvidiaRequest.setModel("nvidia/nemotron-3-ultra-550b-a55b");
         nvidiaRequest.setTemperature(1.0);
@@ -30,11 +37,12 @@ public class NvidiaClientConnect {
 
         messages msg = new messages();
         msg.setRole("user");
-        msg.setContent(clientMessage);
-        nvidiaRequest.setMessages(java.util.List.of(msg));
+        msg.setContent(request.query());
+        nvidiaRequest.setMessages(llmContext.getConversationById(request.conversationId()));
 
         NvidiaResponse nvidiaResponse = nvidiaConnectionImpl.nvidia(nvidiaRequest);
         ChoicesMessage choicesMessage = nvidiaResponse.getChoices().getFirst().getMessage();
+        llmContext.addAIMessage(request.conversationId(), choicesMessage.getContent());
         return choicesMessage.getContent();
     }
 
