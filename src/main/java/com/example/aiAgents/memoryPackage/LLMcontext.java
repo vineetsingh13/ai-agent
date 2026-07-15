@@ -27,6 +27,14 @@ public class LLMcontext {
         insertConvo(conversationId, msg);
     }
 
+    public void addSystemMessage(String conversationId, String message){
+        messages msg = new messages();
+        msg.setRole("system");
+        msg.setContent(message);
+
+        insertConvo(conversationId, msg);
+    }
+
     public ArrayList<messages> getConversationById(String conversationId){
         return conversationMap.get(conversationId);
     }
