@@ -78,7 +78,7 @@ public class NvidiaClientConnect {
         return toolsDecision.getResponse();
     }*/
 
-    public String getAiResponse(ChatRequest request){
+    /*public String getAiResponse(ChatRequest request){
 
         // Store user message
         llmContext.addUserMessage(request.conversationId(), request.query());
@@ -153,6 +153,79 @@ public class NvidiaClientConnect {
         );
 
         return finalChoice.getContent();
+    }*/
+
+    public String getAiResponse(ChatRequest request) throws Exception {
+
+        // Store user message
+        llmContext.addUserMessage(request.conversationId(), request.query());
+
+        ArrayList<messages> convo =
+                new ArrayList<>(llmContext.getConversationById(request.conversationId()));
+
+        // Add system prompt once
+        convo.addFirst(new messages(
+                "system",
+                toolsPromptBuilder.build(toolsRegistry.getToolDefinitions())
+        ));
+        llmContext.addSystemMessage(request.conversationId(), String.valueOf(new messages(
+                "system",
+                toolsPromptBuilder.build(toolsRegistry.getToolDefinitions()))));
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        final int MAX_ITERATIONS = 10;
+
+        for (int i = 0; i < MAX_ITERATIONS; i++) {
+
+            NvidiaRequest nvidiaRequest = createRequest(convo);
+
+            // Call LLM
+            NvidiaResponse nvidiaResponse = nvidiaConnectionImpl.nvidia(nvidiaRequest);
+
+            ChoicesMessage choice =
+                    nvidiaResponse.getChoices().getFirst().getMessage();
+
+            ToolsDecision decision =
+                    mapper.readValue(choice.getContent(), ToolsDecision.class);
+
+            // Agent is finished
+            if (decision.getTool() == null ||
+                    "none".equalsIgnoreCase(decision.getTool())) {
+
+                llmContext.addAIMessage(
+                        request.conversationId(),
+                        decision.getResponse()
+                );
+
+                return decision.getResponse();
+            }
+
+            // Find tool
+            Tools tool = toolsRegistry.getTool(decision.getTool());
+
+            if (tool == null) {
+                throw new RuntimeException(
+                        "Unknown tool: " + decision.getTool()
+                );
+            }
+
+            // Execute tool
+            String toolResponse = tool.execute(decision.getInput());
+
+            llmContext.addSystemMessage(request.conversationId(),
+                    "Calling tool: " + decision.getTool());
+            // Add tool result
+            convo.add(new messages(
+                    "assistant",
+                    "Tool '" + decision.getTool() + "' returned: " + toolResponse
+            ));
+            llmContext.addSystemMessage(request.conversationId(),
+                    "Tool '" + decision.getTool() + "' returned: " + toolResponse);
+
+        }
+
+        throw new RuntimeException("Agent exceeded maximum iterations.");
     }
 
     private NvidiaRequest createRequest(ArrayList<messages> messages) {
