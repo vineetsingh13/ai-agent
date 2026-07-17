@@ -11,7 +11,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class WeatherServiceImpl implements WeatherService {
 
     WebClient  webClient;
-    private final String weatherKey = "weatherKey";
+    private final String weatherKey = "weather-API-key";
 
     public WeatherServiceImpl(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder.baseUrl("https://api.openweathermap.org/data/2.5").build();
